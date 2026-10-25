@@ -1,0 +1,41 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Set up Java
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v3
+
+    - name: Extract zip and Create Debug Keystore
+      run: |
+        unzip -o *.zip || true
+        # Generate debug.keystore so signing passes
+        keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+        chmod +x gradlew 2>/dev/null || true
+
+    - name: Build APK
+      run: |
+        if [ ! -f "./gradlew" ]; then
+          gradle wrapper
+        fi
+        chmod +x gradlew
+        ./gradlew assembleDebug --no-daemon
+
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: Todament 
+        path: "**/build/outputs/apk/debug/*.apk"
